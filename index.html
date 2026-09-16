@@ -207,9 +207,10 @@
     .modal__image {
       display: block;
       width: 100%;
+      aspect-ratio: 3 / 4;
       max-height: calc(100dvh - 122px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-      object-fit: contain;
       background: var(--surface);
+      background-repeat: no-repeat;
     }
 
     .modal__arrow {
@@ -368,7 +369,7 @@
   <div class="modal" id="product-modal" aria-hidden="true">
     <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="modal-title">
       <div class="modal__media" id="modal-media">
-        <img class="modal__image" id="modal-image" src="" alt="">
+        <div class="modal__image" id="modal-image" role="img"></div>
         <button class="modal__arrow modal__arrow--previous" id="modal-previous" type="button" aria-label="Предыдущее фото">&#8249;</button>
         <button class="modal__arrow modal__arrow--next" id="modal-next" type="button" aria-label="Следующее фото">&#8250;</button>
         <span class="modal__counter" id="modal-counter" aria-live="polite"></span>
@@ -379,47 +380,48 @@
   </div>
 
   <script>
+    const makeProduct = (id, title, photoCount) => {
+      return {
+        title,
+        image: `assets/products/${id}.webp`,
+        sprite: `assets/sprites/${id}.webp`,
+        photoCount,
+        columns: 4,
+        rows: Math.ceil(photoCount / 4)
+      };
+    };
+
     const productCatalog = {
       iphone: [
-        { title: "Alba Series", image: "assets/products/1.webp" },
-        {
-          title: "Ocean Series",
-          image: "assets/products/2.webp",
-          images: [
-            "assets/products/2.webp",
-            "assets/ocean-case-2.webp",
-            "assets/ocean-case-3.webp",
-            "assets/ocean-case-4.webp",
-            "assets/ocean-case-5.webp"
-          ]
-        },
-        { title: "Slim Series", image: "assets/products/3.webp" },
-        { title: "Clarity Series", image: "assets/products/4.webp" },
-        { title: "Modern Series", image: "assets/products/5.webp" },
-        { title: "Kevlar Series", image: "assets/products/6.webp" },
-        { title: "Aurora Series", image: "assets/products/7.webp" },
-        { title: "Shockproof", image: "assets/products/8.webp" },
-        { title: "Sunrise Series", image: "assets/products/9.webp" },
-        { title: "Super Slim Series", image: "assets/products/10.webp" }
+        makeProduct(1, "Alba Series", 12),
+        makeProduct(2, "Ocean Series", 14),
+        makeProduct(3, "Slim Series", 12),
+        makeProduct(4, "Clarity Series", 20),
+        makeProduct(5, "Modern Series", 18),
+        makeProduct(6, "Kevlar Series", 16),
+        makeProduct(7, "Aurora Series", 15),
+        makeProduct(8, "Shockproof", 13),
+        makeProduct(9, "Sunrise Series", 21),
+        makeProduct(10, "Super Slim Series", 13)
       ],
       ipad: [
-        { title: "Origami Series", image: "assets/products/11.webp" },
-        { title: "Milano Series", image: "assets/products/12.webp" },
-        { title: "Magnet Series", image: "assets/products/13.webp" }
+        makeProduct(11, "Origami Series", 17),
+        makeProduct(12, "Milano Series", 19),
+        makeProduct(13, "Magnet Series", 16)
       ],
       macbook: [
-        { title: "Slim Series", image: "assets/products/14.webp" },
-        { title: "Matte Series", image: "assets/products/15.webp" }
+        makeProduct(14, "Slim Series", 12),
+        makeProduct(15, "Matte Series", 12)
       ],
       airpods: [
-        { title: "Color Series", image: "assets/products/16.webp" }
+        makeProduct(16, "Color Series", 15)
       ],
       powerbanks: [
-        { title: "Speed Series", image: "assets/products/17.webp" },
-        { title: "Cube Series", image: "assets/products/18.webp" },
-        { title: "Wave Series", image: "assets/products/19.webp" },
-        { title: "Kevlar Series", image: "assets/products/20.webp" },
-        { title: "Flow Series", image: "assets/products/21.webp" }
+        makeProduct(17, "Speed Series", 15),
+        makeProduct(18, "Cube Series", 19),
+        makeProduct(19, "Wave Series", 15),
+        makeProduct(20, "Kevlar Series", 20),
+        makeProduct(21, "Flow Series", 18)
       ]
     };
 
@@ -435,20 +437,27 @@
     const modalClose = document.querySelector("#modal-close");
 
     let lastFocusedCard = null;
-    let galleryImages = [];
+    let activeProduct = null;
     let galleryIndex = 0;
     let touchStartX = 0;
 
     const showGalleryImage = (index) => {
-      galleryIndex = (index + galleryImages.length) % galleryImages.length;
-      modalImage.src = galleryImages[galleryIndex];
-      modalImage.alt = `${modalTitle.textContent}, фото ${galleryIndex + 1}`;
+      galleryIndex = (index + activeProduct.photoCount) % activeProduct.photoCount;
+      const column = galleryIndex % activeProduct.columns;
+      const row = Math.floor(galleryIndex / activeProduct.columns);
+      const positionX = activeProduct.columns === 1 ? 0 : (column / (activeProduct.columns - 1)) * 100;
+      const positionY = activeProduct.rows === 1 ? 0 : (row / (activeProduct.rows - 1)) * 100;
 
-      const hasMultipleImages = galleryImages.length > 1;
+      modalImage.style.backgroundImage = `url("${activeProduct.sprite}")`;
+      modalImage.style.backgroundSize = `${activeProduct.columns * 100}% ${activeProduct.rows * 100}%`;
+      modalImage.style.backgroundPosition = `${positionX}% ${positionY}%`;
+      modalImage.setAttribute("aria-label", `${modalTitle.textContent}, фото ${galleryIndex + 1}`);
+
+      const hasMultipleImages = activeProduct.photoCount > 1;
       modalPrevious.hidden = !hasMultipleImages;
       modalNext.hidden = !hasMultipleImages;
       modalCounter.hidden = !hasMultipleImages;
-      modalCounter.textContent = `${galleryIndex + 1} / ${galleryImages.length}`;
+      modalCounter.textContent = `${galleryIndex + 1} / ${activeProduct.photoCount}`;
     };
 
     const showPreviousImage = () => showGalleryImage(galleryIndex - 1);
@@ -457,7 +466,7 @@
     const openProduct = (product, card) => {
       lastFocusedCard = card;
       modalTitle.textContent = product.title;
-      galleryImages = product.images || [product.image];
+      activeProduct = product;
       showGalleryImage(0);
       modal.setAttribute("aria-hidden", "false");
       document.body.classList.add("modal-open");
@@ -523,15 +532,15 @@
 
     modalMedia.addEventListener("touchend", (event) => {
       const distance = event.changedTouches[0].clientX - touchStartX;
-      if (Math.abs(distance) < 45 || galleryImages.length < 2) return;
+      if (Math.abs(distance) < 45 || activeProduct.photoCount < 2) return;
       distance > 0 ? showPreviousImage() : showNextImage();
     }, { passive: true });
 
     document.addEventListener("keydown", (event) => {
       if (modal.getAttribute("aria-hidden") !== "false") return;
       if (event.key === "Escape") closeModal();
-      if (event.key === "ArrowLeft" && galleryImages.length > 1) showPreviousImage();
-      if (event.key === "ArrowRight" && galleryImages.length > 1) showNextImage();
+      if (event.key === "ArrowLeft" && activeProduct.photoCount > 1) showPreviousImage();
+      if (event.key === "ArrowRight" && activeProduct.photoCount > 1) showNextImage();
     });
 
     renderCategory("iphone");
